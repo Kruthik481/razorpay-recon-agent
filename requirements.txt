@@ -1,0 +1,2 @@
+# Day 1 (generator, matcher, eval) is stdlib-only by design.
+pytest>=8.0
