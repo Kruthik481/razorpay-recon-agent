@@ -34,7 +34,10 @@ Issues = "https://github.com/Kruthik481/razorpay-recon-agent/issues"
 where = ["src"]
 
 [tool.pytest.ini_options]
-pythonpath = ["src"]
+# "src" for the package, "." so `tests.conftest` resolves however pytest was
+# started. `python -m pytest` puts the working directory on sys.path and bare
+# `pytest` does not, and depending on that difference hid a broken CI for days.
+pythonpath = ["src", "."]
 testpaths = ["tests"]
 addopts = "-q"
 

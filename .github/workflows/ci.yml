@@ -25,22 +25,11 @@ jobs:
           python -m pip install --upgrade pip
           pip install -e ".[dev]"
 
-      - name: Lint
-        run: |
-          ruff check src tests
-          ruff format --check src tests
+      - name: Everything, the same way a laptop runs it
+        run: make verify PY=python
 
-      - name: Test with coverage
-        run: PYTHONPATH=src pytest --cov=recon --cov-report=term-missing
-
-      - name: The pipeline runs on a clean checkout with no API key
-        run: PYTHONPATH=src python -m recon.cli run --cases 200 --seed 3
-
-      - name: Incorrect postings must be zero
-        run: PYTHONPATH=src python scripts/assert_no_bad_postings.py
-
-      - name: File and function size limits
-        run: PYTHONPATH=src python scripts/check_size_limits.py
+      - name: Tests also pass when pytest is invoked directly
+        run: PYTHONPATH=src pytest
 
   # A UTF-8 locale is not guaranteed anywhere: not on a CI runner, not in a
   # container, not on a colleague's laptop. Amounts here carry a rupee sign, so

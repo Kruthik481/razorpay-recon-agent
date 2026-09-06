@@ -266,3 +266,54 @@ mind is a new line" in a docstring did not make anything collapse the log — it
 just made me believe it did. Also: I found this by clicking the thing. Four
 days of tests and eight reviews had not, because every one of them fed the log
 in one clean pass, which is exactly what a person never does.
+
+---
+
+## 10. CI was red on every commit for four days, and I only looked once the repo went public
+
+**Symptom.** Four commits, four failed CI runs, every job, every Python
+version, all at the test step, with `Process completed with exit code 2`. The
+suite passed on my machine every time I ran it.
+
+**The wrong diagnosis first.** I reproduced a genuine bug on the way here —
+`Path.write_text` with no `encoding` uses the *locale*, which is ASCII on
+plenty of machines, so writing a report containing a rupee sign raised
+`UnicodeEncodeError`. I fixed it, pushed, and told the user it was the cause.
+It was not: GitHub's runners set `LANG=C.UTF-8`, so that path was never taken
+there. The bug was real and worth fixing on its own — `recon dashboard` would
+have crashed on anyone whose locale was not UTF-8 — but I asserted a cause
+before I had evidence for it, and the next CI run was red again.
+
+**The actual diagnosis.** Exit code 2 is not a failing test. Pytest returns 1
+for that; 2 is a *collection* error. The public check-run annotations gave me
+that number, and it reframed the whole search: nothing was failing, seven files
+were never being imported.
+
+`tests/conftest.py` holds shared record builders, and the test modules import
+them with `from tests.conftest import make_row`. That needs the repository root
+on `sys.path`. `python -m pytest` puts the working directory there. Bare
+`pytest` does not. I ran the former every single time; CI ran the latter. Seven
+collection errors, exit 2, on all four commits.
+
+**Recovery.** `pythonpath = ["src", "."]` in the pytest config, so the tests
+import the same way however pytest is started. Then the durable half: CI now
+runs `make verify`, the same target I run, so "green on my machine" and "green
+in CI" are one claim rather than two commands that drifted apart. A second step
+still invokes `pytest` directly, so the difference that caused this cannot come
+back unnoticed.
+
+**Kept.** Three things, and the middle one is the one that stings.
+
+A local command that differs from the CI command is not a check, it is a
+coincidence. Mine differed by five characters.
+
+I stated a root cause I had not verified, because I had found *a* bug and
+wanted it to be *the* bug. The honest move at that moment was to say "this is a
+real defect, and I do not yet know whether it is the one CI is hitting". The
+evidence to distinguish them — exit code 2 — was one API call away and I had
+not made it.
+
+And a repository nobody has looked at is not a repository that works. Four days
+of green local runs, a red badge the whole time, and I found it only because
+the repo became public and I finally read the thing a stranger would read
+first.

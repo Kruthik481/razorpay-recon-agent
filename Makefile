@@ -5,7 +5,7 @@ CASES ?= 500
 SEED ?= 7
 PORT ?= 8765
 
-.PHONY: help run serve dashboard queue review promote evaluate export test cov lint fmt check clean
+.PHONY: help run serve dashboard queue review promote evaluate export test cov lint fmt check verify clean
 
 help:  ## show this help
 	@grep -E '^[a-z-]+:.*?## .*$$' $(MAKEFILE_LIST) | \
@@ -35,8 +35,8 @@ evaluate:  ## score the deterministic matcher alone
 export:  ## write the generated period out as CSV
 	@$(RUN) export --cases $(CASES) --seed $(SEED) --out data
 
-test:  ## run the test suite
-	@PYTHONPATH=src $(PY) -m pytest
+test:  ## run the test suite (as CI runs it: bare pytest, no cwd on sys.path)
+	@PYTHONPATH=src $(PY) -m pytest -p no:cacheprovider
 
 cov:  ## run tests with coverage, enforcing the floor
 	@PYTHONPATH=src $(PY) -m pytest --cov=recon --cov-report=term-missing
@@ -49,7 +49,12 @@ fmt:  ## apply formatting
 	@$(PY) -m ruff check --fix src tests
 	@$(PY) -m ruff format src tests
 
-check: lint cov  ## everything CI runs
+check: lint cov  ## lint and tests with coverage
+
+verify: check  ## everything CI runs, in the order CI runs it
+	@PYTHONPATH=src $(PY) -m recon.cli run --cases 200 --seed 3
+	@PYTHONPATH=src $(PY) scripts/assert_no_bad_postings.py
+	@PYTHONPATH=src $(PY) scripts/check_size_limits.py
 
 clean:  ## remove generated artefacts
 	@rm -rf data/*.csv reports/*.html .pytest_cache .coverage htmlcov
