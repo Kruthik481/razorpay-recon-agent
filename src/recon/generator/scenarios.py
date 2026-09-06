@@ -152,9 +152,7 @@ def _simple_settled(ctx: ScenarioContext, *, lag_days: int, utr: str | None) -> 
 
 def build_clean(ctx: ScenarioContext) -> ScenarioResult:
     """UTR present on both sides, amounts agree. The 58% case."""
-    return _simple_settled(
-        ctx, lag_days=config.STANDARD_SETTLEMENT_LAG_DAYS, utr=_utr(ctx)
-    )
+    return _simple_settled(ctx, lag_days=config.STANDARD_SETTLEMENT_LAG_DAYS, utr=_utr(ctx))
 
 
 def build_fee_netting(ctx: ScenarioContext) -> ScenarioResult:
@@ -162,9 +160,7 @@ def build_fee_netting(ctx: ScenarioContext) -> ScenarioResult:
 
     Trips up anyone matching on gross; trivial once you compare on net.
     """
-    return _simple_settled(
-        ctx, lag_days=config.STANDARD_SETTLEMENT_LAG_DAYS, utr=_utr(ctx)
-    )
+    return _simple_settled(ctx, lag_days=config.STANDARD_SETTLEMENT_LAG_DAYS, utr=_utr(ctx))
 
 
 def build_settlement_lag(ctx: ScenarioContext) -> ScenarioResult:
@@ -289,9 +285,7 @@ def build_fx_rounding(ctx: ScenarioContext) -> ScenarioResult:
     settled_on = captured_on + timedelta(days=config.STANDARD_SETTLEMENT_LAG_DAYS)
     order = _order(ctx, _gross(ctx), captured_on)
     row = _payment_row(ctx, order, settled_on, utr=None)
-    credit = _credit(
-        ctx, row.net_paise - config.FX_ROUNDING_DRIFT_PAISE, settled_on, utr=None
-    )
+    credit = _credit(ctx, row.net_paise - config.FX_ROUNDING_DRIFT_PAISE, settled_on, utr=None)
     return _single(ctx, order, row, (credit,))
 
 
@@ -334,6 +328,27 @@ def build_unknown_credit(ctx: ScenarioContext) -> ScenarioResult:
     return ScenarioResult((), (), txns, _link(ctx, (), (), txns))
 
 
+def build_bank_charge_netted(ctx: ScenarioContext) -> ScenarioResult:
+    """The bank takes a flat remittance charge out of the credit.
+
+    Deliberately not proportional to the amount: a matcher that only knows how
+    to reason about fee *rates* cannot explain a constant deduction, so this
+    case exercises the escalation path rather than a rule.
+    """
+    captured_on = _captured_on(ctx)
+    settled_on = captured_on + timedelta(days=config.STANDARD_SETTLEMENT_LAG_DAYS)
+    order = _order(ctx, _gross(ctx), captured_on)
+    row = _payment_row(ctx, order, settled_on, utr=None)
+    credit = _credit(
+        ctx,
+        row.net_paise - config.BANK_REMITTANCE_CHARGE_PAISE,
+        settled_on,
+        utr=None,
+        description="NEFT PSP SETTLEMENT LESS CHARGES",
+    )
+    return _single(ctx, order, row, (credit,))
+
+
 SCENARIO_BUILDERS = {
     BreakType.CLEAN: build_clean,
     BreakType.FEE_NETTING: build_fee_netting,
@@ -348,4 +363,5 @@ SCENARIO_BUILDERS = {
     BreakType.DUPLICATE_UTR: build_duplicate_utr,
     BreakType.MISSING_IN_BANK: build_missing_in_bank,
     BreakType.UNKNOWN_CREDIT: build_unknown_credit,
+    BreakType.BANK_CHARGE_NETTED: build_bank_charge_netted,
 }

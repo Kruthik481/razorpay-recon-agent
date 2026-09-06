@@ -49,7 +49,7 @@ def test_missing_in_bank_case_emits_no_bank_transaction():
     dataset = generate_dataset(total_cases=200, seed=7)
 
     links = [
-        l for l in dataset.ground_truth if l.break_type is BreakType.MISSING_IN_BANK
+        link for link in dataset.ground_truth if link.break_type is BreakType.MISSING_IN_BANK
     ]
 
     assert links, "expected at least one missing_in_bank case"
@@ -60,7 +60,7 @@ def test_unknown_credit_case_emits_no_settlement_row():
     dataset = generate_dataset(total_cases=200, seed=7)
 
     links = [
-        l for l in dataset.ground_truth if l.break_type is BreakType.UNKNOWN_CREDIT
+        link for link in dataset.ground_truth if link.break_type is BreakType.UNKNOWN_CREDIT
     ]
 
     assert links, "expected at least one unknown_credit case"

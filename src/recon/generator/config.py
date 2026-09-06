@@ -20,6 +20,10 @@ LATE_SETTLEMENT_LAG_DAYS = 3
 
 PARTIAL_FIRST_TRANCHE_BPS = 6_000
 FX_ROUNDING_DRIFT_PAISE = 7
+
+# A flat remittance charge the bank deducts from the credit: Rs 10 + 18% GST.
+# Flat, not proportional, which is exactly why a fee-rate check misses it.
+BANK_REMITTANCE_CHARGE_PAISE = 1_180
 AGGREGATED_BATCH_SIZE = 3
 REFUND_FRACTION_BPS = 3_000
 
@@ -46,4 +50,5 @@ BREAK_MIX: dict[BreakType, int] = {
     BreakType.DUPLICATE_UTR: 1,
     BreakType.MISSING_IN_BANK: 1,
     BreakType.UNKNOWN_CREDIT: 1,
+    BreakType.BANK_CHARGE_NETTED: 1,
 }

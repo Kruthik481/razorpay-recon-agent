@@ -12,3 +12,10 @@ MAX_AGGREGATION_SUBSET_SIZE = 5
 CONFIDENCE_EXACT_UTR = 1.00
 CONFIDENCE_AMOUNT_DATE_WINDOW = 0.90
 CONFIDENCE_AGGREGATED_PAYOUT = 0.85
+
+# Rules synthesised from confirmed human decisions. Held slightly below an
+# exact UTR match: the fact is trusted, the pattern behind it is younger.
+CONFIDENCE_LEARNED_RULE = 0.95
+
+# The merchant discount rate the recon configuration ships with.
+STANDARD_FEE_BPS = 200

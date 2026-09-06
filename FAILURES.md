@@ -77,3 +77,161 @@ package from a plain interpreter, not just under pytest.
 
 **Kept.** A green test suite does not prove the package is installable. Those
 are separate claims and the README depends on the second one.
+
+---
+
+## 4. The editable install stopped resolving, and entry 3's fix turned out to be conditional
+
+**Symptom.** Two days after entry 3, `python -m recon.cli run` failed with
+`ModuleNotFoundError: No module named 'recon'` again — but only from some
+working directories, and only sometimes. `sys.path` showed `site-packages` on
+it and the `.pth` file pointing at `src/` sitting in that directory, unread.
+
+**Diagnosis.** Every time a new subpackage was added (`recon.agent`,
+`recon.review`, `recon.knowledge`), setuptools' strict editable finder had to
+be regenerated, so a stale install silently stopped seeing half the codebase.
+Switching to `editable_mode=compat` produced a plain path `.pth` that this
+interpreter did not process at all. Either way the import path depended on
+install state I could not see from the error message.
+
+**Recovery.** Stopped depending on it. The package is a `src/` layout with no
+runtime dependencies, so `PYTHONPATH=src python -m recon.cli` needs no install
+step at all, and that is what the `Makefile` and CI both use. `pip install -e
+.` still works and is still documented — it is now one supported path rather
+than the only one.
+
+**Kept.** Entry 3 concluded "a green test suite does not prove the package is
+installable". That was right, and incomplete: an install that worked once does
+not prove it still works. The zero-install path is the one a reviewer will
+actually hit, so that is the one CI exercises.
+
+---
+
+## 5. The fee-rate tool "explained" a flat bank charge, exactly
+
+**Symptom.** Before trusting `implied_fee_bps`, I probed it with a case it was
+never meant to explain: a settlement short by a flat ₹11.80 remittance charge.
+It answered `{"exact": True, "fee_bps": 210}` — a clean, whole basis-point rate
+that reproduces the observed payout to the paise.
+
+**Diagnosis.** Not a bug in the tool. On a gross of ₹10,000, a flat ₹11.80
+deduction is arithmetically indistinguishable from a 210 bps merchant discount
+rate. Any inverse-fee calculation will find *some* rate for *any* shortfall.
+Had the agent been allowed to treat "an exact rate exists" as an explanation,
+it would have confidently repriced the merchant on the strength of a
+coincidence, and it would have done it at high confidence because the
+arithmetic really does tie out.
+
+**Recovery.** Split "the arithmetic fits" from "we accept this explanation".
+The gate now auto-applies a fee-rate variance only when the re-derived rate is
+one the system already holds on file, and the agent starts with a single rate.
+An unfamiliar rate is a proposal for a human, never a posting. The 275 bps rate
+in the dataset is learned only after several people confirm it independently —
+and 210 bps never accumulates support, because the residual is constant rather
+than proportional, so the flat-charge promoter picks it up instead.
+
+**Kept.** A model that can compute is not a model that can justify. The check
+that matters is not "does this number work out" but "is this a kind of
+explanation we have agreed to accept".
+
+---
+
+## 6. `recon review` crashed when nothing was attached to stdin
+
+**Symptom.** A CLI test of the interactive review loop failed with
+`OSError: pytest: reading from stdin while output is captured`.
+
+**Diagnosis.** The loop caught `EOFError` and `KeyboardInterrupt` around
+`input()`, which covers a reviewer pressing Ctrl-D or Ctrl-C. It did not cover
+there being no terminal at all — a cron job, a CI step, a piped invocation —
+where the read raises `OSError`. The failure mode in production would have been
+worse than the test: an operator running the queue non-interactively would lose
+every decision made before the crash, because the log is only written at the
+end.
+
+**Recovery.** Treat a missing terminal the same as a reviewer walking away:
+stop the loop and persist what was already decided. Found because the surface
+was tested at all, which is the argument for testing the boring commands.
+
+**Kept.** Exception handlers written around the interactive case tend to miss
+the non-interactive one, and the non-interactive one is where data gets lost
+quietly.
+
+---
+
+## 7. One wrong posting, found only by running the invariant at a larger size
+
+**Symptom.** Everything passed at the documented configuration — 500 cases,
+seed 7, zero incorrect postings, four days running. Then I wrote the CI script
+that asserts the invariant across several sizes and seeds, and 750 cases at
+seed 23 produced exactly one wrong posting.
+
+**Diagnosis.** A `bank_charge_netted` credit — one short by a flat ₹11.80 — was
+auto-flagged as an *unidentified receipt* at 0.90 confidence. Two things had to
+line up. The settlement row's own case found two candidate credits in its
+window instead of one, so it abstained and left the credit unclaimed. The
+credit then came up as its own case, and the probe that decides "nothing
+explains this money" searched only for a settlement row whose net **exactly**
+equalled the credit.
+
+That search can never find a row that paid out short. So any deduction the
+system cannot name will eventually be reported as money arriving from nowhere,
+and reported confidently, because as far as that probe can see the search came
+back empty. It needed a denser period for two candidates to collide, which is
+why 500 cases never showed it.
+
+**Recovery.** Made the question harder to answer in the affirmative. "Nothing
+explains this credit" now requires that no open settlement row could have
+produced it *after any plausible deduction* — net at or above the credit, up to
+5% plus the materiality limit. If exactly one row could have, the case becomes a
+low-confidence link instead, so the row and the credit reach a person together
+rather than as two separate half-mysteries. CI now runs the invariant at six
+sizes up to 1,500 cases.
+
+**Kept.** Two lessons, and the second is the one I would not have got any other
+way. First: a negative claim needs a search wide enough to disprove it — an
+exact-match query is not evidence of absence. Second: an invariant that only
+runs on the configuration in the README is a description of that configuration,
+not an invariant. Every safety property in this project now runs across sizes
+and seeds, and the one that mattered was the one I nearly did not write.
+
+---
+
+## 8. The materiality limit had a hole in it, and the docs claimed it did not
+
+**Symptom.** A security review of the gate found that
+`ResidualReason.UNRECONCILED_FUNDS` returned from `_residual_blockers` before
+the materiality check ran. So any verdict flagging a missing or unidentified
+credit auto-applied at any amount, provided the model was confident. One of my
+own tests asserted this as correct behaviour, posting ₹9,763 automatically
+against a ₹500 limit.
+
+**Diagnosis.** The reasoning was that a flag is not a posting — it raises an
+exception rather than moving money — so the cap did not apply. That was wrong
+for a reason I had not thought about: `build_review_queue` filters out
+everything the gate auto-applied, so an auto-flagged case is never shown to
+anyone. "Flagged" and "closed without review" were the same thing in this
+implementation. A missing ₹9,763 payout would have been marked as handled and
+disappeared.
+
+Worse, `SECURITY.md` stated that the limit "caps any automatic posting at ₹500
+of unexplained value". That sentence was not true of the code it described.
+
+**Recovery.** The cap now applies to flags as well as links. The line it draws
+turns out to be the right one to draw anyway, and it is a better description of
+what the system is for: **it clears matching problems on its own, and never
+clears a cash difference.** Every `missing_in_bank` and `unknown_credit` case
+now reaches a person, which is what a controller would want in the first place.
+
+It cost real numbers — straight-through fell from 93.0% to 91.0%, and to 97.0%
+rather than 99.0% after learning. I would rather report 97% honestly than 99%
+with a hole in the control, and the shape of what is left is a better answer
+than the bigger number was: five cases nobody could decide, and ten where money
+is genuinely wrong.
+
+**Kept.** Two things. A control with an exemption is not a control until you
+have checked what the exemption reaches — mine was defensible in isolation and
+wrong in context, because of a filter three modules away. And documentation
+that overstates a guarantee is worse than no documentation: I wrote that
+sentence in `SECURITY.md` believing it, and believing it is what stopped me
+re-reading the branch it described.

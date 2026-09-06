@@ -7,17 +7,17 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from datetime import date, datetime
-from enum import Enum
+from enum import StrEnum
 
 from recon.domain.break_types import BreakType
 
 
-class TxnDirection(str, Enum):
+class TxnDirection(StrEnum):
     CREDIT = "credit"
     DEBIT = "debit"
 
 
-class SettlementRowType(str, Enum):
+class SettlementRowType(StrEnum):
     PAYMENT = "payment"
     REFUND = "refund"
     CHARGEBACK = "chargeback"

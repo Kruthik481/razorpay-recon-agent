@@ -5,10 +5,10 @@ mechanical and belong to a deterministic matcher. Only the ambiguous
 remainder is worth spending an LLM call on.
 """
 
-from enum import Enum
+from enum import StrEnum
 
 
-class BreakType(str, Enum):
+class BreakType(StrEnum):
     """Why a settlement row and a bank transaction fail to line up naively."""
 
     CLEAN = "clean"
@@ -25,6 +25,7 @@ class BreakType(str, Enum):
     DUPLICATE_UTR = "duplicate_utr"
     MISSING_IN_BANK = "missing_in_bank"
     UNKNOWN_CREDIT = "unknown_credit"
+    BANK_CHARGE_NETTED = "bank_charge_netted"
 
 
 # Breaks a rules engine can resolve with full confidence and no model call.

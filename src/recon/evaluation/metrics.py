@@ -60,9 +60,7 @@ class EvaluationReport:
     def deterministic_ceiling(self) -> float:
         """Share of cases a rules engine could resolve even in principle."""
         matchable = sum(
-            s.total_cases
-            for s in self.by_break_type
-            if s.break_type in _deterministic_types()
+            s.total_cases for s in self.by_break_type if s.break_type in _deterministic_types()
         )
         if self.total_cases == 0:
             return 0.0
@@ -83,18 +81,12 @@ def _proposal_signature(p: MatchProposal) -> tuple[frozenset[str], frozenset[str
     return p.settlement_row_ids, p.bank_txn_ids
 
 
-def evaluate(dataset: Dataset, outcome: ReconOutcome) -> EvaluationReport:
-    """Compare proposals to ground truth, exactly — partial credit is not useful."""
-    truth_by_signature = {_signature(link): link for link in dataset.ground_truth}
-    row_to_case = {
-        row_id: link
-        for link in dataset.ground_truth
-        for row_id in link.settlement_row_ids
-    }
-    txn_to_case = {
-        txn_id: link for link in dataset.ground_truth for txn_id in link.bank_txn_ids
-    }
-
+def _score_proposals(
+    outcome: ReconOutcome,
+    truth_by_signature: dict,
+    row_to_case: dict,
+) -> tuple[int, int, Counter[BreakType], Counter[BreakType]]:
+    """Split proposals into right and wrong, attributing each to a break type."""
     correct_by_type: Counter[BreakType] = Counter()
     incorrect_by_type: Counter[BreakType] = Counter()
     correct = incorrect = 0
@@ -112,28 +104,38 @@ def evaluate(dataset: Dataset, outcome: ReconOutcome) -> EvaluationReport:
         if origin is not None:
             incorrect_by_type[origin.break_type] += 1
 
-    totals: Counter[BreakType] = Counter(
-        link.break_type for link in dataset.ground_truth
-    )
-    by_break_type = tuple(
-        BreakTypeScore(
-            break_type=bt,
-            total_cases=totals[bt],
-            correctly_matched=correct_by_type[bt],
-            incorrectly_matched=incorrect_by_type[bt],
-        )
-        for bt in sorted(totals, key=lambda b: (-totals[b], b.value))
-    )
+    return correct, incorrect, correct_by_type, incorrect_by_type
 
+
+def _queue_composition(
+    outcome: ReconOutcome, row_to_case: dict, txn_to_case: dict
+) -> Counter[BreakType]:
+    """What is left over, by the break type it actually came from."""
     queue: Counter[BreakType] = Counter()
-    for row_id in outcome.unmatched_settlement_row_ids:
-        link = row_to_case.get(row_id)
+    for record_id, lookup in (
+        *((r, row_to_case) for r in outcome.unmatched_settlement_row_ids),
+        *((t, txn_to_case) for t in outcome.unmatched_bank_txn_ids),
+    ):
+        link = lookup.get(record_id)
         if link is not None:
             queue[link.break_type] += 1
-    for txn_id in outcome.unmatched_bank_txn_ids:
-        link = txn_to_case.get(txn_id)
-        if link is not None:
-            queue[link.break_type] += 1
+    return queue
+
+
+def evaluate(dataset: Dataset, outcome: ReconOutcome) -> EvaluationReport:
+    """Compare proposals to ground truth, exactly — partial credit is not useful."""
+    truth_by_signature = {_signature(link): link for link in dataset.ground_truth}
+    row_to_case = {
+        row_id: link for link in dataset.ground_truth for row_id in link.settlement_row_ids
+    }
+    txn_to_case = {
+        txn_id: link for link in dataset.ground_truth for txn_id in link.bank_txn_ids
+    }
+
+    correct, incorrect, correct_by_type, incorrect_by_type = _score_proposals(
+        outcome, truth_by_signature, row_to_case
+    )
+    totals: Counter[BreakType] = Counter(link.break_type for link in dataset.ground_truth)
 
     return EvaluationReport(
         total_cases=len(dataset.ground_truth),
@@ -143,6 +145,16 @@ def evaluate(dataset: Dataset, outcome: ReconOutcome) -> EvaluationReport:
         correct_matches=correct,
         incorrect_matches=incorrect,
         exception_queue_size=outcome.exception_queue_size,
-        by_break_type=by_break_type,
-        exception_queue_composition=tuple(queue.most_common()),
+        by_break_type=tuple(
+            BreakTypeScore(
+                break_type=bt,
+                total_cases=totals[bt],
+                correctly_matched=correct_by_type[bt],
+                incorrectly_matched=incorrect_by_type[bt],
+            )
+            for bt in sorted(totals, key=lambda b: (-totals[b], b.value))
+        ),
+        exception_queue_composition=tuple(
+            _queue_composition(outcome, row_to_case, txn_to_case).most_common()
+        ),
     )

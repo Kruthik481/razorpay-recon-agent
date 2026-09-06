@@ -79,8 +79,7 @@ def match_by_amount_and_date_window(
         candidates = [
             t
             for t in by_amount.get(expected, [])
-            if row.settled_on <= t.value_date <= window_end
-            and t.bank_txn_id not in claimed
+            if row.settled_on <= t.value_date <= window_end and t.bank_txn_id not in claimed
         ]
         if len(candidates) != 1:
             continue
@@ -169,9 +168,7 @@ def match_aggregated_payouts(
             )
         else:
             # The batch may have been paid out only in part.
-            matched_rows, txn, rationale = _match_partial_batch(
-                settlement_id, batch, available
-            )
+            matched_rows, txn, rationale = _match_partial_batch(settlement_id, batch, available)
             if matched_rows is None:
                 continue
 

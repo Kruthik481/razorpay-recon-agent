@@ -10,6 +10,8 @@ from __future__ import annotations
 from collections.abc import Callable, Sequence
 
 from recon.domain.models import BankTxn, Dataset, SettlementRow
+from recon.knowledge.model import Knowledge
+from recon.matching.learned import learned_rules
 from recon.matching.result import MatchProposal, ReconOutcome
 from recon.matching.rules import (
     match_aggregated_payouts,
@@ -60,13 +62,18 @@ def reconcile(
 
     return ReconOutcome(
         matches=all_proposals,
-        unmatched_settlement_row_ids=frozenset(
-            r.settlement_row_id for r in pending_rows
-        ),
+        unmatched_settlement_row_ids=frozenset(r.settlement_row_id for r in pending_rows),
         unmatched_bank_txn_ids=frozenset(t.bank_txn_id for t in pending_txns),
     )
 
 
-def reconcile_dataset(dataset: Dataset) -> ReconOutcome:
+def rules_for(knowledge: Knowledge | None = None) -> tuple[MatchRule, ...]:
+    """The built-in rules, followed by any rule the system has been taught."""
+    if knowledge is None:
+        return DEFAULT_RULES
+    return DEFAULT_RULES + learned_rules(knowledge)
+
+
+def reconcile_dataset(dataset: Dataset, knowledge: Knowledge | None = None) -> ReconOutcome:
     """Convenience wrapper — the matcher never sees dataset.ground_truth."""
-    return reconcile(dataset.settlement_rows, dataset.bank_txns)
+    return reconcile(dataset.settlement_rows, dataset.bank_txns, rules_for(knowledge))

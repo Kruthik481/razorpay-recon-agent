@@ -1,78 +1,114 @@
 """Command line entry point.
 
-    python -m recon.cli evaluate --cases 500 --seed 7
+    python -m recon.cli run                    # the whole loop, before and after
+    python -m recon.cli evaluate               # deterministic matcher only
+    python -m recon.cli queue                  # what still needs a person
+    python -m recon.cli review                 # decide on the queue
+    python -m recon.cli promote                # turn confirmations into rules
+    python -m recon.cli dashboard --out report.html
     python -m recon.cli export --out data/
+
+Add `--resolver anthropic` to any command that runs the agent to use a live
+model instead of the built-in policy.
 """
 
 from __future__ import annotations
 
 import argparse
-import csv
 import sys
-from dataclasses import asdict, fields
 from pathlib import Path
 
-from recon.domain.models import Dataset
-from recon.evaluation.metrics import evaluate
-from recon.evaluation.report import render
+from recon.agent.providers import RESOLVER_NAMES, build_resolver
+from recon.commands import data, loop, review_cmd
 from recon.generator import config
 from recon.generator.dataset import generate_dataset
-from recon.matching.engine import reconcile_dataset
+from recon.knowledge.model import Knowledge
+from recon.knowledge.store import load as load_knowledge
+from recon.review.decisions import ReviewDecision
+from recon.review.decisions import load as load_decisions
 
-_EXPORTS = ("orders", "settlement_rows", "bank_txns", "ground_truth")
+DEFAULT_KNOWLEDGE = Path("state/knowledge.json")
+DEFAULT_DECISIONS = Path("state/decisions.jsonl")
+DEFAULT_DASHBOARD = Path("reports/dashboard.html")
 
-
-def _write_csv(path: Path, records: tuple) -> int:
-    """Write a tuple of frozen dataclasses to CSV. Returns rows written."""
-    if not records:
-        path.write_text("")
-        return 0
-    header = [f.name for f in fields(records[0])]
-    with path.open("w", newline="") as handle:
-        writer = csv.DictWriter(handle, fieldnames=header)
-        writer.writeheader()
-        for record in records:
-            writer.writerow({k: v for k, v in asdict(record).items()})
-    return len(records)
+# Commands that need the full loop; everything else only needs a dataset.
+NEEDS_PIPELINE = ("run", "dashboard", "queue", "review", "promote")
 
 
-def _export(dataset: Dataset, out_dir: Path) -> None:
-    try:
-        out_dir.mkdir(parents=True, exist_ok=True)
-    except OSError as exc:
-        raise SystemExit(f"cannot create output directory {out_dir}: {exc}") from exc
-
-    for name in _EXPORTS:
-        target = out_dir / f"{name}.csv"
-        count = _write_csv(target, getattr(dataset, name))
-        print(f"  wrote {count:>5} rows -> {target}")
-
-
-def _build_parser() -> argparse.ArgumentParser:
-    parser = argparse.ArgumentParser(prog="recon", description=__doc__)
-    parser.add_argument("command", choices=("evaluate", "export"))
+def build_parser() -> argparse.ArgumentParser:
+    parser = argparse.ArgumentParser(
+        prog="recon",
+        description=__doc__,
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+    )
+    parser.add_argument(
+        "command",
+        choices=("run", "evaluate", "export", "dashboard", "queue", "review", "promote"),
+    )
     parser.add_argument("--cases", type=int, default=config.DEFAULT_CASE_COUNT)
     parser.add_argument("--seed", type=int, default=config.DEFAULT_SEED)
-    parser.add_argument("--out", type=Path, default=Path("data"))
+    parser.add_argument("--resolver", choices=RESOLVER_NAMES, default="policy")
+    parser.add_argument("--model", default=None, help="model id for a live resolver")
+    parser.add_argument("--out", type=Path, default=None)
+    parser.add_argument("--knowledge", type=Path, default=DEFAULT_KNOWLEDGE)
+    parser.add_argument("--decisions", type=Path, default=DEFAULT_DECISIONS)
+    parser.add_argument(
+        "--replay-decisions",
+        action="store_true",
+        help="learn from the decision log instead of the scripted reviewer",
+    )
     return parser
 
 
+def _knowledge(args: argparse.Namespace) -> Knowledge:
+    try:
+        return load_knowledge(args.knowledge)
+    except ValueError as exc:
+        print(f"ignoring unusable knowledge file: {exc}", file=sys.stderr)
+        return Knowledge()
+
+
+def _decisions(args: argparse.Namespace) -> tuple[ReviewDecision, ...] | None:
+    if not args.replay_decisions:
+        return None
+    try:
+        return load_decisions(args.decisions)
+    except ValueError as exc:
+        print(f"cannot read decision log: {exc}", file=sys.stderr)
+        raise SystemExit(1) from exc
+
+
 def main(argv: list[str] | None = None) -> int:
-    args = _build_parser().parse_args(argv)
+    args = build_parser().parse_args(argv)
+    knowledge = _knowledge(args)
 
     try:
-        dataset = generate_dataset(total_cases=args.cases, seed=args.seed)
-    except (ValueError, KeyError) as exc:
-        print(f"failed to generate dataset: {exc}", file=sys.stderr)
+        if args.command not in NEEDS_PIPELINE:
+            dataset = generate_dataset(total_cases=args.cases, seed=args.seed)
+            if args.command == "evaluate":
+                return data.cmd_evaluate(dataset, knowledge)
+            return data.cmd_export(dataset, args.out or Path("data"))
+
+        result = loop.build(
+            total_cases=args.cases,
+            seed=args.seed,
+            resolver=build_resolver(args.resolver, args.model),
+            knowledge=knowledge,
+            decisions=_decisions(args),
+        )
+    except (ValueError, KeyError, RuntimeError) as exc:
+        print(f"failed: {exc}", file=sys.stderr)
         return 1
 
-    if args.command == "export":
-        _export(dataset, args.out)
-        return 0
-
-    outcome = reconcile_dataset(dataset)
-    print(render(evaluate(dataset, outcome)))
-    return 0
+    if args.command == "run":
+        return loop.cmd_run(result)
+    if args.command == "dashboard":
+        return loop.cmd_dashboard(result, args.out or DEFAULT_DASHBOARD)
+    if args.command == "queue":
+        return review_cmd.cmd_queue(result)
+    if args.command == "review":
+        return review_cmd.cmd_review(result, args.decisions)
+    return review_cmd.cmd_promote(result, args.decisions, args.knowledge, knowledge)
 
 
 if __name__ == "__main__":

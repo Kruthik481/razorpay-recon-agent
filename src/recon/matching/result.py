@@ -3,15 +3,16 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from enum import Enum
+from enum import StrEnum
 
 
-class MatchStage(str, Enum):
+class MatchStage(StrEnum):
     """Which rule produced a match. Ordered from strongest to weakest evidence."""
 
     EXACT_UTR = "exact_utr"
     AMOUNT_DATE_WINDOW = "amount_date_window"
     AGGREGATED_PAYOUT = "aggregated_payout"
+    LEARNED = "learned"
 
 
 @dataclass(frozen=True, slots=True)

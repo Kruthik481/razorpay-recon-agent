@@ -32,10 +32,8 @@ def _headline(report: EvaluationReport) -> list[str]:
         f"  auto-match rate        {_pct(report.auto_match_rate):>8}"
         f"   (ceiling {_pct(report.deterministic_ceiling)})",
         f"  precision              {_pct(report.precision):>8}",
-        f"  incorrect matches      {report.incorrect_matches:>8}"
-        f"   <- must stay at 0",
-        f"  exception queue        {report.exception_queue_size:>8}"
-        f"   records for the agent",
+        f"  incorrect matches      {report.incorrect_matches:>8}   <- must stay at 0",
+        f"  exception queue        {report.exception_queue_size:>8}   records for the agent",
     ]
 
 
@@ -47,9 +45,7 @@ def _per_break_type(report: EvaluationReport) -> list[str]:
         _rule(),
     ]
     for score in report.by_break_type:
-        scope = (
-            "rules" if score.break_type in DETERMINISTICALLY_MATCHABLE else "agent"
-        )
+        scope = "rules" if score.break_type in DETERMINISTICALLY_MATCHABLE else "agent"
         lines.append(
             f"  {score.break_type.value:<24}{score.total_cases:>7}"
             f"{score.correctly_matched:>9}{_pct(score.recall):>9}  {scope}"
