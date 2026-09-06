@@ -39,6 +39,8 @@ def split_fees(gross_paise: int, fee_bps: int, tax_on_fee_bps: int) -> FeeSplit:
     )
 
 
+# Every file this project writes is UTF-8 explicitly, because this symbol is
+# not representable in a locale-default encoding on some systems.
 RUPEE = "\u20b9"
 
 

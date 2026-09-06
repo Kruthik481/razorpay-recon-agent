@@ -39,7 +39,7 @@ def cmd_dashboard(result: PipelineResult, out: Path) -> int:
     """Write the same story as a single self-contained HTML file."""
     try:
         out.parent.mkdir(parents=True, exist_ok=True)
-        out.write_text(render_dashboard(result))
+        out.write_text(render_dashboard(result), encoding="utf-8")
     except OSError as exc:
         print(f"cannot write dashboard to {out}: {exc}")
         return 1

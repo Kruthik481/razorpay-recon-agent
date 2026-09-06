@@ -93,7 +93,21 @@ def _decisions(args: argparse.Namespace) -> tuple[ReviewDecision, ...] | None:
         raise SystemExit(1) from exc
 
 
+def _force_utf8_output() -> None:
+    """Print rupees regardless of what the environment claims to support.
+
+    Amounts carry a currency symbol that a locale-default encoding cannot
+    always represent, and a reconciliation report that raises rather than
+    prints is worse than one that renders a placeholder.
+    """
+    for stream in (sys.stdout, sys.stderr):
+        reconfigure = getattr(stream, "reconfigure", None)
+        if reconfigure is not None:
+            reconfigure(encoding="utf-8", errors="replace")
+
+
 def main(argv: list[str] | None = None) -> int:
+    _force_utf8_output()
     args = build_parser().parse_args(argv)
     knowledge = _knowledge(args)
 

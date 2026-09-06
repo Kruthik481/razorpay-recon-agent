@@ -46,14 +46,14 @@ def test_export_writes_one_csv_per_source(tmp_path, capsys):
 
 def test_export_reports_an_unwritable_directory(tmp_path, capsys):
     blocked = tmp_path / "file"
-    blocked.write_text("not a directory")
+    blocked.write_text("not a directory", encoding="utf-8")
     assert main(["export", *SMALL, "--out", str(blocked / "under")]) == 1
 
 
 def test_dashboard_writes_a_self_contained_file(tmp_path):
     target = tmp_path / "nested" / "report.html"
     assert main(["dashboard", *SMALL, "--out", str(target)]) == 0
-    html = target.read_text()
+    html = target.read_text(encoding="utf-8")
     assert html.startswith("<!doctype html>")
     assert "<style>" in html and "src=" not in html
 
@@ -83,12 +83,12 @@ def test_promote_writes_knowledge_from_a_log(tmp_path, capsys):
     assert (
         main(["promote", *SMALL, "--decisions", str(log), "--knowledge", str(knowledge)]) == 0
     )
-    assert json.loads(knowledge.read_text())["fee_bps_on_file"]
+    assert json.loads(knowledge.read_text(encoding="utf-8"))["fee_bps_on_file"]
 
 
 def test_an_unusable_knowledge_file_is_ignored_not_fatal(tmp_path, capsys):
     bad = tmp_path / "knowledge.json"
-    bad.write_text("{broken")
+    bad.write_text("{broken", encoding="utf-8")
     assert main(["evaluate", *SMALL, "--knowledge", str(bad)]) == 0
     assert "ignoring unusable knowledge file" in capsys.readouterr().err
 

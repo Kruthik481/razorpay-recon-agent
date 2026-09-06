@@ -41,3 +41,35 @@ jobs:
 
       - name: File and function size limits
         run: PYTHONPATH=src python scripts/check_size_limits.py
+
+  # A UTF-8 locale is not guaranteed anywhere: not on a CI runner, not in a
+  # container, not on a colleague's laptop. Amounts here carry a rupee sign, so
+  # the whole product runs once with the locale claiming ASCII.
+  ascii-locale:
+    runs-on: ubuntu-latest
+    env:
+      LC_ALL: C
+      LANG: C
+      PYTHONUTF8: "0"
+      PYTHONCOERCECLOCALE: "0"
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install dev dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -e ".[dev]"
+
+      - name: Test
+        run: PYTHONPATH=src pytest
+
+      - name: Write every artefact
+        run: |
+          PYTHONPATH=src python -m recon.cli run --cases 200 --seed 3
+          PYTHONPATH=src python -m recon.cli dashboard --cases 200 --out /tmp/report.html
+          PYTHONPATH=src python -m recon.cli export --cases 200 --out /tmp/csv

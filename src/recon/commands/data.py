@@ -18,10 +18,10 @@ EXPORTS = ("orders", "settlement_rows", "bank_txns", "ground_truth")
 def write_csv(path: Path, records: tuple) -> int:
     """Write frozen dataclasses to CSV. Returns the number of rows written."""
     if not records:
-        path.write_text("")
+        path.write_text("", encoding="utf-8")
         return 0
     header = [f.name for f in fields(records[0])]
-    with path.open("w", newline="") as handle:
+    with path.open("w", newline="", encoding="utf-8") as handle:
         writer = csv.DictWriter(handle, fieldnames=header)
         writer.writeheader()
         for record in records:

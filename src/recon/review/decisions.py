@@ -85,7 +85,7 @@ def from_json(line: str) -> ReviewDecision:
 def append(decisions: tuple[ReviewDecision, ...], path: Path) -> None:
     """Add decisions to the log without rewriting a single existing byte."""
     path.parent.mkdir(parents=True, exist_ok=True)
-    with path.open("a") as handle:
+    with path.open("a", encoding="utf-8") as handle:
         for decision in decisions:
             handle.write(to_json(decision) + "\n")
 
@@ -107,7 +107,7 @@ def load(path: Path) -> tuple[ReviewDecision, ...]:
     if not path.exists():
         return ()
     try:
-        lines = path.read_text().splitlines()
+        lines = path.read_text(encoding="utf-8").splitlines()
     except OSError as exc:
         raise ValueError(f"cannot read decision log {path}: {exc}") from exc
     return tuple(from_json(line) for line in lines if line.strip())

@@ -64,7 +64,10 @@ def from_dict(payload: dict) -> Knowledge:
 
 def save(knowledge: Knowledge, path: Path) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
-    path.write_text(json.dumps(to_dict(knowledge), indent=2, sort_keys=True) + "\n")
+    path.write_text(
+        json.dumps(to_dict(knowledge), indent=2, sort_keys=True) + "\n",
+        encoding="utf-8",
+    )
 
 
 def load(path: Path) -> Knowledge:
@@ -72,7 +75,7 @@ def load(path: Path) -> Knowledge:
     if not path.exists():
         return Knowledge()
     try:
-        payload = json.loads(path.read_text())
+        payload = json.loads(path.read_text(encoding="utf-8"))
     except (OSError, json.JSONDecodeError) as exc:
         raise ValueError(f"cannot read knowledge file {path}: {exc}") from exc
     return from_dict(payload)

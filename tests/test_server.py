@@ -90,7 +90,7 @@ def test_promotion_shrinks_the_queue_and_leaves_nothing_wrong(session):
 def test_promotion_writes_the_knowledge_file(session):
     promoted = promote_session(_confirm_everything(session))
     assert promoted.knowledge_path.exists()
-    assert json.loads(promoted.knowledge_path.read_text())["facts"]
+    assert json.loads(promoted.knowledge_path.read_text(encoding="utf-8"))["facts"]
 
 
 def test_promoting_nothing_changes_nothing(session):

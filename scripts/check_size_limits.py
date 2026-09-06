@@ -16,7 +16,7 @@ ROOTS = (Path("src"), Path("scripts"))
 
 
 def _function_lengths(path: Path) -> list[tuple[str, int, int]]:
-    tree = ast.parse(path.read_text(), filename=str(path))
+    tree = ast.parse(path.read_text(encoding="utf-8"), filename=str(path))
     lengths = []
     for node in ast.walk(tree):
         if not isinstance(node, ast.FunctionDef | ast.AsyncFunctionDef):
@@ -34,7 +34,7 @@ def main() -> int:
     for root in ROOTS:
         for path in sorted(root.rglob("*.py")):
             checked += 1
-            lines = len(path.read_text().splitlines())
+            lines = len(path.read_text(encoding="utf-8").splitlines())
             if lines > MAX_FILE_LINES:
                 failures.append(f"{path}: {lines} lines (limit {MAX_FILE_LINES})")
             failures.extend(

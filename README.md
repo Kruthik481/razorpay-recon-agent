@@ -230,7 +230,7 @@ make dashboard    # the same thing as a self-contained HTML file
 make queue        # what still needs a person, and why
 make review       # decide on the queue at the terminal
 make promote      # turn your confirmations into rules
-make test         # 204 tests
+make test         # 206 tests
 make check        # lint, format check, tests with coverage
 make export       # write the period out as CSV
 ```
@@ -298,7 +298,7 @@ src/recon/
   dashboard/    self-contained HTML report
   server/       the review console: session, JSON API, HTTP
   commands/     one module per command group
-tests/          204 tests, 93% branch coverage
+tests/          206 tests, 93% branch coverage
 ```
 
 ## Design notes

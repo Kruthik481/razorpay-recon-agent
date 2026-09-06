@@ -68,6 +68,6 @@ def test_malformed_payload_is_rejected():
 
 def test_unreadable_json_is_rejected(tmp_path):
     path = tmp_path / "knowledge.json"
-    path.write_text("{not json")
+    path.write_text("{not json", encoding="utf-8")
     with pytest.raises(ValueError, match="cannot read"):
         load(path)

@@ -58,14 +58,14 @@ def test_a_missing_log_means_nothing_was_reviewed(tmp_path):
 
 def test_a_corrupt_line_is_rejected_loudly(tmp_path):
     path = tmp_path / "decisions.jsonl"
-    path.write_text('{"case_ref": "x"}\n')
+    path.write_text('{"case_ref": "x"}\n', encoding="utf-8")
     with pytest.raises(ValueError, match="malformed"):
         load(path)
 
 
 def test_blank_lines_are_ignored(tmp_path):
     path = tmp_path / "decisions.jsonl"
-    path.write_text(to_json(DECISION) + "\n\n")
+    path.write_text(to_json(DECISION) + "\n\n", encoding="utf-8")
     assert len(load(path)) == 1
 
 
