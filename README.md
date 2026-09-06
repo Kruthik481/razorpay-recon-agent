@@ -1,5 +1,9 @@
 # Reconciliation exception agent
 
+[![ci](https://github.com/Kruthik481/razorpay-recon-agent/actions/workflows/ci.yml/badge.svg)](https://github.com/Kruthik481/razorpay-recon-agent/actions/workflows/ci.yml)
+[![license: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
+[![python](https://img.shields.io/badge/python-3.11%20%7C%203.12%20%7C%203.13-blue.svg)](https://github.com/Kruthik481/razorpay-recon-agent/actions/workflows/ci.yml)
+
 **Deterministic rules clear the mechanical breaks. A model is spent only on the
 ambiguous tail. Every exception a human confirms becomes a new rule, so the same
 break never costs twice.**
