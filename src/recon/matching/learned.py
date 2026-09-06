@@ -14,7 +14,7 @@ from collections.abc import Callable
 from datetime import timedelta
 
 from recon.domain.models import BankTxn, SettlementRow, SettlementRowType, TxnDirection
-from recon.domain.money import split_fees
+from recon.domain.money import format_paise, split_fees
 from recon.generator.config import GST_ON_FEE_BPS
 from recon.knowledge.model import Knowledge
 from recon.matching import config
@@ -105,9 +105,9 @@ def match_by_learned_fee_rates(
             _propose(
                 row,
                 txn,
-                f"gross {row.gross_paise} less a learned "
+                f"gross {format_paise(row.gross_paise)} less a learned "
                 f"{'/'.join(str(r) for r in rates)} bps fee and GST is "
-                f"{txn.amount_paise} paise, matching the sole credit in the window",
+                f"{format_paise(txn.amount_paise)}, matching the sole credit in the window",
             )
         )
     return tuple(proposals)
@@ -139,8 +139,8 @@ def match_within_learned_tolerance(
             _propose(
                 row,
                 hits[0],
-                f"credit is within the approved {tolerance} paise rounding tolerance of "
-                f"the expected {row.net_paise}",
+                f"credit is within the approved {format_paise(tolerance)} rounding tolerance "
+                f"of the expected {format_paise(row.net_paise)}",
             )
         )
     return tuple(proposals)
@@ -167,8 +167,8 @@ def match_less_flat_charges(
             _propose(
                 row,
                 txn,
-                f"credit is the expected {row.net_paise} paise less the known flat "
-                f"bank charge of {'/'.join(str(c) for c in charges)} paise",
+                f"credit is the expected {format_paise(row.net_paise)} less the known flat "
+                f"bank charge of {'/'.join(format_paise(c) for c in charges)}",
             )
         )
     return tuple(proposals)

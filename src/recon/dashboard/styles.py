@@ -31,12 +31,13 @@ body {
   font: 15px/1.55 ui-sans-serif, -apple-system, "Segoe UI", Roboto, sans-serif;
 }
 .wrap { max-width: 1080px; margin: 0 auto; }
+.scroll { overflow-x: auto; border-radius: 12px; }
 header { margin-bottom: 28px; }
 h1 { font-size: 26px; margin: 0 0 6px; letter-spacing: -0.01em; }
 h2 { font-size: 17px; margin: 36px 0 12px; letter-spacing: -0.005em; }
 .sub { color: var(--muted); font-size: 14px; margin: 0; }
-.cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); gap: 14px;
-  }
+.cards { display: grid; gap: 14px;
+  grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); }
 .card {
   background: var(--panel); border: 1px solid var(--line);
   border-radius: 12px; padding: 16px 18px;
@@ -58,7 +59,6 @@ td.num, th.num { text-align: right; font-variant-numeric: tabular-nums; }
 .bar { height: 8px; border-radius: 999px; background: var(--line); overflow: hidden; }
 .bar > span { display: block; height: 100%; background: var(--accent); }
 .pill { display: inline-block; padding: 2px 9px; border-radius: 999px;
-
   font-size: 12px; font-weight: 600; border: 1px solid var(--line); }
 .pill.review { color: var(--warn); } .pill.escalate { color: var(--bad); }
 .mono { font-family: ui-monospace, SFMono-Regular, Menlo, monospace;

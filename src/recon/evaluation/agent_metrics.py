@@ -51,6 +51,7 @@ class AgentReport:
     classified_correct: int
     verification_failures: int
     by_break_type: tuple[tuple[BreakType, int, int], ...]
+    auto_applied_by_break_type: tuple[tuple[BreakType, int], ...]
 
     @property
     def auto_apply_precision(self) -> float:
@@ -123,6 +124,7 @@ def evaluate_agent(dataset: Dataset, run: AgentRun) -> AgentReport:
     tally = _Tally()
     hits: Counter[BreakType] = Counter()
     totals: Counter[BreakType] = Counter()
+    posted: Counter[BreakType] = Counter()
 
     for gated in run.gated:
         link = truth.get(_signature(gated))
@@ -130,9 +132,11 @@ def evaluate_agent(dataset: Dataset, run: AgentRun) -> AgentReport:
             link = None
         tally = _count_disposition(tally, gated, link is not None)
         tally = _count_outcome(tally, gated, link)
-        if link is not None:
-            totals[link.break_type] += 1
-            hits[link.break_type] += gated.verdict.break_type is link.break_type
+        if link is None:
+            continue
+        totals[link.break_type] += 1
+        hits[link.break_type] += gated.verdict.break_type is link.break_type
+        posted[link.break_type] += gated.disposition is Disposition.AUTO_APPLY
 
     return AgentReport(
         cases_worked=len(run.gated),
@@ -148,5 +152,8 @@ def evaluate_agent(dataset: Dataset, run: AgentRun) -> AgentReport:
         verification_failures=tally.failures,
         by_break_type=tuple(
             (bt, totals[bt], hits[bt]) for bt in sorted(totals, key=lambda b: b.value)
+        ),
+        auto_applied_by_break_type=tuple(
+            (bt, posted[bt]) for bt in sorted(posted, key=lambda b: b.value)
         ),
     )

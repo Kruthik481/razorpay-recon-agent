@@ -20,6 +20,7 @@ from recon.agent.schema import (
 from recon.agent.tools import ToolContext, implied_fee_bps
 from recon.agent.verify import signed_txn_total, verify
 from recon.domain.models import SettlementRowType
+from recon.domain.money import format_paise
 
 
 def _payment_gross(ctx: ToolContext, verdict: AgentVerdict) -> int:
@@ -56,16 +57,22 @@ def _residual_blockers(ctx: ToolContext, verdict: AgentVerdict) -> tuple[str, ..
     # arrived" is not a matching problem the agent gets to close on its own;
     # above the limit it is a real cash difference and a person owns it.
     if abs(residual) > config.MATERIALITY_PAISE:
-        return (f"residual {residual} paise exceeds the materiality limit",)
+        return (
+            f"unexplained {format_paise(abs(residual))} exceeds the "
+            f"{format_paise(config.MATERIALITY_PAISE)} materiality limit",
+        )
     if reason is ResidualReason.UNRECONCILED_FUNDS:
         return ()
     if reason is ResidualReason.FX_ROUNDING:
         if abs(residual) > ctx.knowledge.fx_tolerance_paise:
-            return (f"rounding tolerance on file is {ctx.knowledge.fx_tolerance_paise} paise",)
+            return (
+                "rounding tolerance on file is only "
+                f"{format_paise(ctx.knowledge.fx_tolerance_paise)}",
+            )
         return ()
     if reason is ResidualReason.FLAT_BANK_CHARGE:
         if residual not in ctx.knowledge.flat_bank_charges_paise:
-            return (f"no flat charge of {residual} paise is on file",)
+            return (f"no flat charge of {format_paise(residual)} is on file",)
         return ()
     if reason is ResidualReason.FEE_RATE_VARIANCE:
         return _fee_variance_blockers(ctx, verdict)

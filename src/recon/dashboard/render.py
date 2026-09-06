@@ -22,6 +22,11 @@ def _rupees(paise: int) -> str:
     return f"₹{paise / 100:,.2f}"
 
 
+def _scrollable(table: str) -> str:
+    """Let a wide table scroll inside its own box rather than the page."""
+    return f'<div class="scroll">{table}</div>'
+
+
 def _card(label: str, value: str, note: str, tone: str = "") -> str:
     klass = f" {tone}" if tone else ""
     return (
@@ -81,7 +86,7 @@ def _cycles_table(result: PipelineResult) -> str:
         "<th class='num'>wrong</th><th>straight through</th></tr>"
     )
     body = _cycle_row(result.before) + _cycle_row(result.after)
-    return f"<table><thead>{head}</thead><tbody>{body}</tbody></table>"
+    return _scrollable(f"<table><thead>{head}</thead><tbody>{body}</tbody></table>")
 
 
 def _promotions_table(result: PipelineResult) -> str:
@@ -100,7 +105,7 @@ def _promotions_table(result: PipelineResult) -> str:
         "<tr><th>fact</th><th class='num'>value</th>"
         "<th class='num'>confirmations</th><th>evidence</th></tr>"
     )
-    return f"<table><thead>{head}</thead><tbody>{rows}</tbody></table>"
+    return _scrollable(f"<table><thead>{head}</thead><tbody>{rows}</tbody></table>")
 
 
 def _queue_row(item: ReviewItem) -> str:
@@ -111,7 +116,7 @@ def _queue_row(item: ReviewItem) -> str:
         f"<td>{escape(item.break_type or 'unclassified')}"
         f"<div class='reason'>{escape(item.rationale)}</div>"
         f"<div class='reason mono'>{escape(records)}</div></td>"
-        f"<td class='num'>{escape(item.residual_rupees)}</td>"
+        f"<td class='num'>{escape(item.residual_label)}</td>"
         f"<td class='num'>{item.confidence:.2f}</td>"
         f"<td>{escape('; '.join(item.blockers))}</td></tr>"
     )
@@ -125,27 +130,40 @@ def _queue_table(result: PipelineResult) -> str:
         "<th class='num'>confidence</th><th>why a human is needed</th></tr>"
     )
     rows = "".join(_queue_row(i) for i in result.after.review)
-    return f"<table><thead>{head}</thead><tbody>{rows}</tbody></table>"
+    return _scrollable(f"<table><thead>{head}</thead><tbody>{rows}</tbody></table>")
 
 
 def _breaks_table(result: PipelineResult) -> str:
+    """Where every case ended up.
+
+    Showing only what the rules cleared would report the agent's own work as a
+    row of zeroes, which is the opposite of what happened.
+    """
+    by_agent = dict(result.after.agent.auto_applied_by_break_type)
     head = (
         "<tr><th>break type</th><th class='num'>cases</th>"
-        "<th class='num'>cleared by rules</th></tr>"
+        "<th class='num'>cleared by rules</th><th class='num'>cleared by agent</th>"
+        "<th class='num'>to a human</th></tr>"
     )
-    rows = "".join(
-        f"<tr><td>{escape(s.break_type.value)}</td>"
-        f"<td class='num'>{s.total_cases}</td>"
-        f"<td class='num'>{s.correctly_matched}</td></tr>"
-        for s in result.after.matcher.by_break_type
-    )
-    return f"<table><thead>{head}</thead><tbody>{rows}</tbody></table>"
+    rows = []
+    for score in result.after.matcher.by_break_type:
+        agent = by_agent.get(score.break_type, 0)
+        human = score.total_cases - score.correctly_matched - agent
+        tone = " class='num warn'" if human else " class='num'"
+        rows.append(
+            f"<tr><td>{escape(score.break_type.value)}</td>"
+            f"<td class='num'>{score.total_cases}</td>"
+            f"<td class='num'>{score.correctly_matched}</td>"
+            f"<td class='num'>{agent}</td>"
+            f"<td{tone}>{human}</td></tr>"
+        )
+    return _scrollable(f"<table><thead>{head}</thead><tbody>{''.join(rows)}</tbody></table>")
 
 
 def render_dashboard(result: PipelineResult, generated_on: date | None = None) -> str:
     """Build the complete HTML document."""
     stamp = (generated_on or date.today()).isoformat()
-    resolver = result.after.run.cost.model
+    resolver = result.after.run.cost.label
     return f"""<!doctype html>
 <html lang="en"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">

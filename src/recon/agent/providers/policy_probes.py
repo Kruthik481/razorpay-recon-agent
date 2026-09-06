@@ -26,6 +26,7 @@ from recon.agent.providers.policy_support import (
 from recon.agent.schema import AgentVerdict, ProposedAction, ResidualReason
 from recon.domain.break_types import BreakType
 from recon.domain.models import SettlementRowType
+from recon.domain.money import format_paise
 
 # --- probes over cases that carry settlement rows ---------------------------
 
@@ -57,8 +58,8 @@ def probe_anchor_tie_out(session: Session) -> Outcome:
             confidence=config.CONFIDENCE_COLLECTIVE_TIE_OUT,
             rationale=(
                 f"{len(session.rows)} rows and {len(session.anchored_txns)} credits share "
-                f"UTR {sorted(shared)} and net to zero as a group; the pairing inside the "
-                "group cannot be determined from the data"
+                f"UTR {', '.join(sorted(shared))} and net to zero as a group; the pairing "
+                "inside the group cannot be determined from the data"
             ),
             evidence=cite(
                 *(r.settlement_row_id for r in session.rows),
@@ -94,7 +95,9 @@ def probe_chargeback_debit(session: Session) -> Outcome:
             residual=0,
             reason=ResidualReason.NONE,
             confidence=config.CONFIDENCE_EXACT_DEBIT,
-            rationale=f"sole debit of {amount} paise in the window answers the chargeback",
+            rationale=(
+                f"sole debit of {format_paise(amount)} in the window answers the chargeback"
+            ),
             evidence=cite(hits[0]["bank_txn_id"]),
         ),
         (call,),
@@ -118,8 +121,8 @@ def probe_exact_credit(session: Session) -> Outcome:
             reason=ResidualReason.NONE,
             confidence=config.CONFIDENCE_EXACT_TIE_OUT,
             rationale=(
-                f"{len(session.rows)} settlement rows net to {expected} paise, matched by "
-                "the sole credit of that amount in the window"
+                f"{len(session.rows)} settlement rows net to {format_paise(expected)}, matched "
+                "by the sole credit of that amount in the window"
             ),
             evidence=cite(hits[0]["bank_txn_id"]),
         ),
@@ -160,7 +163,7 @@ def probe_split_credits(session: Session) -> Outcome:
             confidence=config.CONFIDENCE_UNIQUE_SPLIT,
             rationale=(
                 f"{len(ids)} credits are the only combination in the window summing to "
-                f"{expected} paise"
+                f"{format_paise(expected)}"
             ),
             evidence=cite(*ids),
         ),
@@ -209,8 +212,8 @@ def probe_fee_variance(session: Session) -> Outcome:
                 else config.CONFIDENCE_UNKNOWN_FEE_RATE
             ),
             rationale=(
-                f"credit of {hit['amount_paise']} paise is exactly gross {gross} less a "
-                f"{bps} bps fee and GST; that rate is "
+                f"credit of {format_paise(hit['amount_paise'])} is exactly gross "
+                f"{format_paise(gross)} less a {bps} bps fee and GST; that rate is "
                 f"{'on file' if on_file else 'not on file'}"
             ),
             evidence=cite(hit["bank_txn_id"]),
@@ -239,8 +242,8 @@ def probe_small_tolerance(session: Session) -> Outcome:
             reason=ResidualReason.FX_ROUNDING,
             confidence=config.CONFIDENCE_KNOWN_TOLERANCE,
             rationale=(
-                f"sole credit within {FX_PROBE_PAISE} paise of the expected "
-                f"{expected}; off by {residual}"
+                f"sole credit within {format_paise(FX_PROBE_PAISE)} of the expected "
+                f"{format_paise(expected)}; off by {format_paise(residual)}"
             ),
             evidence=cite(hits[0]["bank_txn_id"]),
         ),
@@ -272,7 +275,7 @@ def probe_missing_credit(session: Session) -> Outcome:
             confidence=config.CONFIDENCE_ORPHAN_FLAG,
             rationale=(
                 f"UTR {referenced[0]} appears in the settlement report but nowhere in the "
-                f"bank statement; {session.expected_paise} paise never arrived"
+                f"bank statement; {format_paise(session.expected_paise)} never arrived"
             ),
             evidence=cite(*(r.settlement_row_id for r in session.rows)),
         ),
@@ -304,8 +307,8 @@ def probe_unexplained_candidate(session: Session) -> Outcome:
             reason=ResidualReason.UNEXPLAINED,
             confidence=config.CONFIDENCE_UNEXPLAINED,
             rationale=(
-                f"sole nearby credit is short by {residual} paise, which is neither a "
-                "rounding difference nor any fee rate on file"
+                f"sole nearby credit is short by {format_paise(residual)}, which is neither "
+                "a rounding difference nor any fee rate on file"
             ),
             evidence=cite(hits[0]["bank_txn_id"]),
         ),
@@ -345,8 +348,8 @@ def probe_unidentified_credit(session: Session) -> Outcome:
             residual_reason=ResidualReason.UNRECONCILED_FUNDS,
             confidence=config.CONFIDENCE_ORPHAN_FLAG,
             rationale=(
-                f"credit of {txn.amount_paise} paise on {txn.value_date} has no open "
-                f"settlement row of that net anywhere in the window"
+                f"credit of {format_paise(txn.amount_paise)} on {txn.value_date} has no "
+                "open settlement row that could have produced it"
             ),
             evidence=cite(*(t.bank_txn_id for t in session.anchored_txns)),
         ),
@@ -377,7 +380,8 @@ def probe_orphan_credit_candidate(session: Session) -> Outcome:
             confidence=config.CONFIDENCE_UNEXPLAINED,
             rationale=(
                 f"only {row['settlement_row_id']} could have produced this credit, but it "
-                f"is short by {row['net_paise'] - txn.amount_paise} paise for no reason on file"
+                f"is short by {format_paise(row['net_paise'] - txn.amount_paise)} for no "
+                "reason on file"
             ),
             evidence=cite(row["settlement_row_id"], txn.bank_txn_id),
         ),

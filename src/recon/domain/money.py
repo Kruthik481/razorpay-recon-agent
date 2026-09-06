@@ -37,3 +37,17 @@ def split_fees(gross_paise: int, fee_bps: int, tax_on_fee_bps: int) -> FeeSplit:
         tax_paise=tax_paise,
         net_paise=gross_paise - fee_paise - tax_paise,
     )
+
+
+RUPEE = "\u20b9"
+
+
+def format_paise(amount_paise: int) -> str:
+    """Render an amount for a person to read.
+
+    Paise are the unit the system computes in; rupees are the unit a finance
+    team reads in. Everything that reaches a human goes through here, so the
+    symbol and the grouping are the same in the terminal, the review queue and
+    the dashboard.
+    """
+    return f"{RUPEE}{amount_paise / 100:,.2f}"

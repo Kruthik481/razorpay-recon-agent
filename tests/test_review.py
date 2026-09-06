@@ -110,7 +110,12 @@ def test_the_scripted_reviewer_answers_every_open_case():
     assert len(simulate_review(result.before.run)) == result.before.human_cases
 
 
-def test_residual_is_shown_in_rupees():
+def test_an_unexplained_amount_says_which_way_it_runs():
+    # A bare negative number in a money column is a puzzle; a reviewer needs to
+    # know whether the bank moved too little or too much.
     result = run_pipeline(total_cases=150, seed=9)
-    item = result.before.review[0]
-    assert "." in item.residual_rupees
+    labels = [item.residual_label for item in result.before.review]
+
+    assert any(label.endswith("short") for label in labels)
+    assert any(label.endswith("unaccounted") for label in labels)
+    assert all("-" not in label or label == "-" for label in labels)

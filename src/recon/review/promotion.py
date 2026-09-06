@@ -23,6 +23,7 @@ from recon.agent.index import LedgerIndex
 from recon.agent.schema import ResidualReason
 from recon.agent.tools import implied_fee_bps
 from recon.domain.models import SettlementRowType
+from recon.domain.money import format_paise
 from recon.knowledge.model import Knowledge, LearnedFact
 from recon.review.decisions import ReviewDecision
 
@@ -113,7 +114,7 @@ def _promote_tolerance(decisions: tuple[ReviewDecision, ...]) -> tuple[Promotion
             case_refs=tuple(sorted(d.case_ref for d in confirmed)),
             note=(
                 f"{len(drifts)} confirmed rounding differences, none larger than "
-                f"{max(drifts)} paise; tolerance set to the widest one seen"
+                f"{format_paise(max(drifts))}; tolerance set to the widest one seen"
             ),
         ),
     )
@@ -138,8 +139,8 @@ def _promote_flat_charges(decisions: tuple[ReviewDecision, ...]) -> tuple[Promot
             support=len(refs),
             case_refs=tuple(sorted(refs)),
             note=(
-                f"{len(refs)} confirmed settlements are short by exactly {amount} paise "
-                "regardless of size; recorded as a flat charge"
+                f"{len(refs)} confirmed settlements are short by exactly "
+                f"{format_paise(amount)} regardless of size; recorded as a flat charge"
             ),
         )
         for amount, refs in sorted(by_amount.items())

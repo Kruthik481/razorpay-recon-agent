@@ -13,6 +13,7 @@ from datetime import timedelta
 from itertools import combinations
 
 from recon.domain.models import BankTxn, SettlementRow, TxnDirection
+from recon.domain.money import format_paise
 from recon.matching import config
 from recon.matching.result import MatchProposal, MatchStage
 
@@ -54,9 +55,9 @@ def match_by_exact_utr(
                 stage=MatchStage.EXACT_UTR,
                 confidence=config.CONFIDENCE_EXACT_UTR,
                 rationale=(
-                    f"UTR {utr} unique on both sides; credit {txn.amount_paise} paise "
-                    f"equals net of gross {row.gross_paise} less fee {row.fee_paise} "
-                    f"and tax {row.tax_paise}"
+                    f"UTR {utr} unique on both sides; credit {format_paise(txn.amount_paise)} "
+                    f"equals net of gross {format_paise(row.gross_paise)} less fee "
+                    f"{format_paise(row.fee_paise)} and tax {format_paise(row.tax_paise)}"
                 ),
             )
         )
@@ -92,7 +93,7 @@ def match_by_amount_and_date_window(
                 stage=MatchStage.AMOUNT_DATE_WINDOW,
                 confidence=config.CONFIDENCE_AMOUNT_DATE_WINDOW,
                 rationale=(
-                    f"no usable UTR; sole credit of {expected} paise between "
+                    f"no usable UTR; sole credit of {format_paise(expected)} between "
                     f"{row.settled_on} and {window_end}"
                 ),
             )
@@ -164,7 +165,7 @@ def match_aggregated_payouts(
             matched_rows, txn = batch, candidates[0]
             rationale = (
                 f"settlement batch {settlement_id} of {len(batch)} rows nets to "
-                f"{full_total} paise, matching a single credit"
+                f"{format_paise(full_total)}, matching a single credit"
             )
         else:
             # The batch may have been paid out only in part.
@@ -214,5 +215,5 @@ def _match_partial_batch(
         subset,
         txn,
         f"settlement batch {settlement_id} paid in part: {len(subset)} of "
-        f"{len(batch)} rows net to {txn.amount_paise} paise",
+        f"{len(batch)} rows net to {format_paise(txn.amount_paise)}",
     )

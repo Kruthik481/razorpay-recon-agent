@@ -19,7 +19,7 @@ def _show(item: ReviewItem, position: int, total: int) -> None:
     print(f"\n[{position}/{total}] {item.case_ref}  ({item.disposition.value})")
     print(f"  {item.headline}")
     print(f"  {item.rationale}")
-    print(f"  unexplained: Rs {item.residual_rupees}  ({item.residual_reason})")
+    print(f"  unexplained: {item.residual_label}  ({item.residual_reason})")
     print(f"  records: {', '.join((*item.settlement_row_ids, *item.bank_txn_ids))}")
     for blocker in item.blockers:
         print(f"  blocked by: {blocker}")

@@ -6,6 +6,7 @@ demo and pasted into the README. It has to look the same on every machine.
 
 from __future__ import annotations
 
+from recon.domain.money import format_paise
 from recon.pipeline import Cycle, PipelineResult
 
 _WIDTH = 74
@@ -20,7 +21,7 @@ def _pct(value: float) -> str:
 
 
 def _rupees(paise: int) -> str:
-    return f"Rs {paise / 100:,.2f}"
+    return format_paise(paise)
 
 
 def _cycle_block(cycle: Cycle) -> list[str]:

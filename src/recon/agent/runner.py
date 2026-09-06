@@ -118,6 +118,7 @@ def run_agent(
         gated=gated,
         traces=traces,
         cost=CostReport(
+            resolver=resolver.name,
             model=resolver.model,
             usage=usage,
             cases_resolved=len(gated),

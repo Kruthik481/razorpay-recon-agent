@@ -40,6 +40,7 @@ class TokenUsage:
 
 @dataclass(frozen=True, slots=True)
 class CostReport:
+    resolver: str
     model: str
     usage: TokenUsage
     cases_resolved: int
@@ -59,6 +60,13 @@ class CostReport:
         if not self.ledger_lines:
             return 0.0
         return self.usd * 1_000 / self.ledger_lines
+
+    @property
+    def label(self) -> str:
+        """How to name this resolver in a report."""
+        return (
+            self.resolver if self.model in ("", "none") else f"{self.resolver} / {self.model}"
+        )
 
     @property
     def ms_per_case(self) -> float:
