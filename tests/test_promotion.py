@@ -164,3 +164,51 @@ def test_every_promotion_names_the_cases_behind_it():
     index, decisions = _fee_fixture(MIN_SUPPORT)
     _, promotions = promote(Knowledge(), decisions, index)
     assert len(promotions[0].case_refs) == MIN_SUPPORT
+
+
+def test_a_case_confirmed_twice_only_counts_once():
+    # The log is append-only, so a double click writes two lines. Support has
+    # to mean independent cases, not log lines.
+    index, decisions = _fee_fixture(MIN_SUPPORT)
+    doubled = decisions + decisions
+
+    _, promotions = promote(Knowledge(), doubled, index)
+
+    assert promotions[0].support == MIN_SUPPORT
+    assert len(set(promotions[0].case_refs)) == MIN_SUPPORT
+
+
+def test_a_withdrawn_confirmation_stops_counting():
+    # Arrange: everything confirmed, then one case rejected on second thoughts.
+    index, decisions = _fee_fixture(MIN_SUPPORT)
+    withdrawal = _decision(
+        decisions[0].case_ref,
+        ResidualReason.FEE_RATE_VARIANCE,
+        decisions[0].residual_paise,
+        outcome=ReviewOutcome.REJECTED,
+        rows=decisions[0].settlement_row_ids,
+        txns=decisions[0].bank_txn_ids,
+    )
+
+    # Act
+    _, promotions = promote(Knowledge(), (*decisions, withdrawal), index)
+
+    # Assert
+    assert promotions == ()
+
+
+def test_a_change_of_mind_the_other_way_does_count():
+    index, decisions = _fee_fixture(MIN_SUPPORT)
+    rejections = tuple(
+        _decision(
+            d.case_ref,
+            ResidualReason.FEE_RATE_VARIANCE,
+            d.residual_paise,
+            outcome=ReviewOutcome.REJECTED,
+            rows=d.settlement_row_ids,
+            txns=d.bank_txn_ids,
+        )
+        for d in decisions
+    )
+    _, promotions = promote(Knowledge(), (*rejections, *decisions), index)
+    assert promotions and promotions[0].support == MIN_SUPPORT

@@ -224,15 +224,37 @@ All money is integer paise. Floats never touch an amount anywhere in the system.
 ## Running it
 
 ```bash
+make serve        # the review console, in a browser  <- start here
 make run          # the whole loop, before and after learning
 make dashboard    # the same thing as a self-contained HTML file
 make queue        # what still needs a person, and why
-make review       # decide on the queue yourself
+make review       # decide on the queue at the terminal
 make promote      # turn your confirmations into rules
-make test         # 176 tests
+make test         # 204 tests
 make check        # lint, format check, tests with coverage
 make export       # write the period out as CSV
 ```
+
+### The review console
+
+`make serve` opens the loop where you can watch it close. It lists every case
+the rules and the agent could not settle, with the proposal, the money that
+does not tie out, and the reason the gate refused it. Confirm or reject each
+one; hit **Promote** and the system mines your confirmations, writes the rules
+they justify, and re-runs the period in front of you:
+
+| | before | after promoting |
+| --- | ---: | ---: |
+| straight through | 91% | **97%** |
+| cases needing a person | 45 | **15** |
+| rules on file | 0 | **3** |
+
+It is a local tool and it behaves like one: stdlib `http.server`, bound to
+`127.0.0.1`, one page and four endpoints, and a token minted at start-up that
+every write requires — so another tab cannot post decisions to your ledger.
+Confirming appends to `state/decisions.jsonl`; the log is append-only, so
+changing your mind writes a new line and the latest word is the one that
+counts.
 
 Nothing above needs an API key, a network connection, or an install step.
 
@@ -274,8 +296,9 @@ src/recon/
   knowledge/    the facts the system is allowed to learn, and their store
   evaluation/   scoring against ground truth; terminal reports
   dashboard/    self-contained HTML report
+  server/       the review console: session, JSON API, HTTP
   commands/     one module per command group
-tests/          176 tests, 93% branch coverage
+tests/          204 tests, 93% branch coverage
 ```
 
 ## Design notes

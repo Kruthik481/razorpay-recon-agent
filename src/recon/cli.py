@@ -5,6 +5,7 @@
     python -m recon.cli queue                  # what still needs a person
     python -m recon.cli review                 # decide on the queue
     python -m recon.cli promote                # turn confirmations into rules
+    python -m recon.cli serve                  # the review console, in a browser
     python -m recon.cli dashboard --out report.html
     python -m recon.cli export --out data/
 
@@ -26,6 +27,7 @@ from recon.knowledge.model import Knowledge
 from recon.knowledge.store import load as load_knowledge
 from recon.review.decisions import ReviewDecision
 from recon.review.decisions import load as load_decisions
+from recon.server.app import serve
 
 DEFAULT_KNOWLEDGE = Path("state/knowledge.json")
 DEFAULT_DECISIONS = Path("state/decisions.jsonl")
@@ -33,6 +35,9 @@ DEFAULT_DASHBOARD = Path("reports/dashboard.html")
 
 # Commands that need the full loop; everything else only needs a dataset.
 NEEDS_PIPELINE = ("run", "dashboard", "queue", "review", "promote")
+
+# The console builds its own session rather than a two-pass pipeline.
+STANDALONE = ("serve",)
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -43,13 +48,23 @@ def build_parser() -> argparse.ArgumentParser:
     )
     parser.add_argument(
         "command",
-        choices=("run", "evaluate", "export", "dashboard", "queue", "review", "promote"),
+        choices=(
+            "run",
+            "serve",
+            "evaluate",
+            "export",
+            "dashboard",
+            "queue",
+            "review",
+            "promote",
+        ),
     )
     parser.add_argument("--cases", type=int, default=config.DEFAULT_CASE_COUNT)
     parser.add_argument("--seed", type=int, default=config.DEFAULT_SEED)
     parser.add_argument("--resolver", choices=RESOLVER_NAMES, default="policy")
     parser.add_argument("--model", default=None, help="model id for a live resolver")
     parser.add_argument("--out", type=Path, default=None)
+    parser.add_argument("--port", type=int, default=8765, help="port for `serve`")
     parser.add_argument("--knowledge", type=Path, default=DEFAULT_KNOWLEDGE)
     parser.add_argument("--decisions", type=Path, default=DEFAULT_DECISIONS)
     parser.add_argument(
@@ -83,6 +98,14 @@ def main(argv: list[str] | None = None) -> int:
     knowledge = _knowledge(args)
 
     try:
+        if args.command in STANDALONE:
+            return serve(
+                total_cases=args.cases,
+                seed=args.seed,
+                knowledge_path=args.knowledge,
+                decisions_path=args.decisions,
+                port=args.port,
+            )
         if args.command not in NEEDS_PIPELINE:
             dataset = generate_dataset(total_cases=args.cases, seed=args.seed)
             if args.command == "evaluate":
@@ -96,7 +119,7 @@ def main(argv: list[str] | None = None) -> int:
             knowledge=knowledge,
             decisions=_decisions(args),
         )
-    except (ValueError, KeyError, RuntimeError) as exc:
+    except (ValueError, KeyError, RuntimeError, OSError) as exc:
         print(f"failed: {exc}", file=sys.stderr)
         return 1
 

@@ -54,6 +54,12 @@ generator ──> Dataset(orders, settlement_rows, bank_txns, ground_truth)
 The loop closes: `Knowledge` feeds back into `reconcile`, so the second pass
 over the same period clears breaks the first pass had to escalate.
 
+`recon serve` drives that same loop interactively. `recon.server.session` holds
+one immutable `ReviewSession`; confirming a case appends to the log and returns
+a new session, and promoting mines the log, saves the knowledge and re-runs the
+period. Nothing in the console is a separate code path — it calls `promote` and
+`run_cycle` like everything else.
+
 ## Module boundaries
 
 | package | owns | must not know about |
@@ -66,6 +72,7 @@ over the same period clears breaks the first pass had to escalate.
 | `knowledge` | learnable facts and their JSON store | how facts get used |
 | `evaluation` | scoring against ground truth | how anything was produced |
 | `dashboard` | HTML rendering | any decision logic |
+| `server` | the review console: session, JSON, HTTP | the answer key |
 
 The one rule that matters: **`ground_truth` is read only by
 `recon.evaluation`.** Nothing in `matching`, `agent` or `review` imports it. The
@@ -149,12 +156,16 @@ journal entry.
 | a learnable fact | `knowledge/model.py`, a promoter in `review/promotion.py`, a rule in `matching/learned.py` |
 | an agent tool | `agent/tools.py` and its schema in `agent/toolspec.py` (a test asserts the two stay in sync) |
 | a model provider | a class with `resolve`, plus `agent/providers/__init__.py` |
+| a console endpoint | an action in `server/api.py`, registered in `server/app.py`'s `WRITES` |
 
 ## What is deliberately not here
 
 - **A database.** The whole period fits in memory and the point is the
   reasoning, not the storage layer.
-- **A web server.** The dashboard is a file. It survives being emailed.
+- **A web *application*.** There is a server, but it is one stdlib
+  `ThreadingHTTPServer` bound to loopback that serves a single page and four
+  endpoints, for the review console. The report stays a file, because a file
+  survives being emailed.
 - **Streaming.** Reconciliation is a batch problem with a daily cadence.
 - **A framework.** The runtime has no dependencies at all. The agent loop is
   about a hundred lines because that is all it needs to be.

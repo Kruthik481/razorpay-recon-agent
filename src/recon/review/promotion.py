@@ -25,7 +25,7 @@ from recon.agent.tools import implied_fee_bps
 from recon.domain.models import SettlementRowType
 from recon.domain.money import format_paise
 from recon.knowledge.model import Knowledge, LearnedFact
-from recon.review.decisions import ReviewDecision
+from recon.review.decisions import ReviewDecision, latest
 
 # How many independent confirmations before a pattern becomes policy.
 MIN_SUPPORT = 3
@@ -56,7 +56,10 @@ class Promotion:
 
 
 def _confirmed(decisions: tuple[ReviewDecision, ...], reason: ResidualReason):
-    return [d for d in decisions if d.is_confirmed and d.residual_reason == reason.value]
+    """Standing confirmations only: one per case, and only the latest word."""
+    return [
+        d for d in latest(decisions) if d.is_confirmed and d.residual_reason == reason.value
+    ]
 
 
 def _observed_fee_bps(decision: ReviewDecision, index: LedgerIndex) -> int | None:

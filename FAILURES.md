@@ -235,3 +235,34 @@ wrong in context, because of a filter three modules away. And documentation
 that overstates a guarantee is worse than no documentation: I wrote that
 sentence in `SECURITY.md` believing it, and believing it is what stopped me
 re-reading the branch it described.
+
+---
+
+## 9. The append-only decision log was read as if it were a tally
+
+**Symptom.** Found by using the review console rather than by a test. Clicking
+Confirm on the same case twice showed "2 confirmed", and promotion counted it
+as two independent confirmations towards the three it requires.
+
+**Diagnosis.** `decisions.jsonl` is append-only by design, and its own module
+docstring says so: "a change of mind is a new line, never an edit". Every
+consumer then read the file as a flat list. So one case confirmed twice counted
+twice, and — worse — a case confirmed and later *rejected* still contributed
+its withdrawn confirmation to the count. `MIN_SUPPORT = 3` was supposed to mean
+three independent cases; it actually meant three log lines.
+
+That is the whole guard against promoting a rule on thin evidence. Three
+double-clicks on one case would have taught the system a merchant fee rate.
+
+**Recovery.** Added `latest()` to collapse the log to one standing decision per
+case, and routed promotion and the console's counters through it. Last word
+wins, which is what an append-only log with revisions has always meant here.
+Then made the semantics visible instead of implicit: the console grew a
+**Change** button, so a reviewer can revise a decision and see the count move.
+
+**Kept.** An append-only log is a design decision that every reader has to
+honour, and the honouring is the part that gets skipped. Writing "a change of
+mind is a new line" in a docstring did not make anything collapse the log — it
+just made me believe it did. Also: I found this by clicking the thing. Four
+days of tests and eight reviews had not, because every one of them fed the log
+in one clean pass, which is exactly what a person never does.

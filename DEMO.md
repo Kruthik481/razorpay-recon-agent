@@ -80,38 +80,47 @@ The script for the pitch video. Timings are the target, not the ceremony.
 > explanation we've agreed to accept". A fee rate auto-applies only if it's
 > already on file.
 
-## 3:45 — The loop that makes it compound (60s)
+## 3:45 — The loop that makes it compound (75s)
 
 > Which raises the obvious question: then how does a new rate ever get accepted?
+
+**Switch to the browser — `make serve`.** This is the beat to do live, not on
+slides.
+
+> Through review. Every blocked case is here, with the proposal, the money that
+> doesn't tie out, and why the gate refused it. I confirm the ones I agree with.
+
+*Click Confirm down the list. The counter moves. Then hit **Promote**.*
+
+> Three independent confirmations of the same pattern, inside hard-coded
+> bounds, and it becomes a deterministic rule.
+
+*The banner appears and the numbers move on screen:*
+
+```
+  straight through     91%  ->  97%      (+6.0 pts)
+  cases needing a person  45  ->  15     (30 fewer)
+  rules on file            0  ->   3
+  incorrect postings       0      0
+```
+
+> Three rules, and the third is the one I'd point at. Nobody told this system
+> that flat charges exist. It noticed the *same* shortfall — ₹11.80 — recurring
+> across settlements of completely different sizes. A percentage fee can't do
+> that. It inferred a constant deduction from the data alone.
 >
-> Through review. Every blocked case goes to a human with the proposal, the
-> money that doesn't tie out, and why it was blocked. Confirmations get mined.
-> Three independent confirmations of the same pattern, inside hard-coded bounds,
-> and it becomes a deterministic rule.
+> And those rules now run in the *matcher*, not the agent. So that break stops
+> costing a model call at all. The system gets cheaper the more it's used.
 
-**Show:** the promotions block.
+**If the room is quiet, one more click:** press **Change** on a decision.
 
-```
-  fee_rate_bps                     275   from 15 confirmations
-  fx_tolerance_paise                 7   from 10 confirmations
-  flat_bank_charge_paise          1180   from  5 confirmations
-```
+> The decision log is append-only, so revising is a new line and the latest word
+> counts. I got that wrong the first time — the log was being read as a tally,
+> so double-clicking one case counted as two independent confirmations. Which
+> would mean three double-clicks could teach it a merchant fee rate. It's
+> FAILURES.md entry 9, and I only found it by clicking the thing.
 
-> The third one is the one I'd point at. Nobody told the system flat charges
-> exist. It noticed the *same* shortfall recurring across settlements of
-> completely different sizes — a percentage fee can't do that — and inferred a
-> constant deduction from the data.
->
-> Then those rules run in the matcher, so the break stops costing a model call
-> at all.
-
-```
-  straight-through           485 / 500   (97.0%)
-  cases reaching a human      15
-  incorrect postings           0
-```
-
-## 4:45 — What's left, and why that's correct (15s)
+## 5:00 — What's left, and why that's correct (15s)
 
 > Fifteen cases survive, and they're exactly the two kinds that should.
 >

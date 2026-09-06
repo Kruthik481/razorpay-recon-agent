@@ -3,8 +3,9 @@ PY ?= python3
 RUN := PYTHONPATH=src $(PY) -m recon.cli
 CASES ?= 500
 SEED ?= 7
+PORT ?= 8765
 
-.PHONY: help run dashboard queue review promote evaluate export test cov lint fmt check clean
+.PHONY: help run serve dashboard queue review promote evaluate export test cov lint fmt check clean
 
 help:  ## show this help
 	@grep -E '^[a-z-]+:.*?## .*$$' $(MAKEFILE_LIST) | \
@@ -12,6 +13,9 @@ help:  ## show this help
 
 run:  ## the whole loop, before and after learning
 	@$(RUN) run --cases $(CASES) --seed $(SEED)
+
+serve:  ## open the review console in a browser
+	@$(RUN) serve --cases $(CASES) --seed $(SEED) --port $(PORT)
 
 dashboard:  ## write reports/dashboard.html
 	@$(RUN) dashboard --cases $(CASES) --seed $(SEED) --out reports/dashboard.html

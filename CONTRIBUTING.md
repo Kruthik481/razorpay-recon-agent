@@ -58,6 +58,21 @@ Three places, in this order:
 A fact that can be learned without a bound is a way to launder a guess into
 policy. Do not add one.
 
+## Working on the console
+
+`make serve` runs it. The split is deliberate:
+
+- `server/session.py` — one immutable `ReviewSession`; every action returns the
+  next one
+- `server/api.py` — session to JSON, and request to next session. No HTTP here,
+  which is why the whole console is testable without a socket
+- `server/app.py` — the HTTP plumbing, the token, and the four endpoints
+- `server/page.py`, `ui_styles.py`, `ui_script.py` — one inlined document
+
+No build step and no client dependency, on purpose. If you add an endpoint, add
+it to `WRITES` and give it a test in `tests/test_server.py` that proves it
+refuses a request without the token.
+
 ## Tests
 
 `make test`. Arrange-Act-Assert, and name the behaviour rather than the

@@ -90,6 +90,18 @@ def append(decisions: tuple[ReviewDecision, ...], path: Path) -> None:
             handle.write(to_json(decision) + "\n")
 
 
+def latest(decisions: tuple[ReviewDecision, ...]) -> tuple[ReviewDecision, ...]:
+    """One decision per case: the most recent one.
+
+    The log is append-only, so a reviewer changing their mind writes a second
+    line rather than editing the first. Anything reasoning about what people
+    decided has to collapse the log this way, or a confirmation that was later
+    withdrawn still counts, and a case confirmed twice counts twice.
+    """
+    by_case = {d.case_ref: d for d in decisions}
+    return tuple(by_case.values())
+
+
 def load(path: Path) -> tuple[ReviewDecision, ...]:
     """Read the whole log. A missing log means nobody has reviewed anything yet."""
     if not path.exists():

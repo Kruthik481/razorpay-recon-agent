@@ -28,11 +28,31 @@ No other secret is used anywhere in the codebase.
 | `state/knowledge.json` | untrusted | schema-versioned, type-checked on load, rejected loudly if malformed |
 | `state/decisions.jsonl` | untrusted | every line parsed strictly; a malformed line fails the load rather than being skipped |
 | CSV exports | output only | never read back by the system |
+| review console requests | untrusted | loopback-only bind, a start-up token required on every endpoint, same-origin check, 64 KB body cap, and no path that reads a request-chosen file |
 
 The agent's tools are read-only by construction. There is no code path from a
 model response to a mutation of the ledger — a verdict is data that the
 verifier and the gate consume, and the gate is the only thing that decides a
 disposition.
+
+## The review console
+
+`recon serve` is a local single-operator tool, and it is built to stay one:
+
+- it binds to `127.0.0.1`, so nothing off this machine can reach it;
+- a token is minted with `secrets.token_urlsafe` at start-up and embedded in
+  the page. Every endpoint requires it, which is what stops an unrelated site
+  open in the same browser from posting decisions — that site cannot read the
+  page to learn the token, and a request without it gets a 403;
+- requests also fail if an `Origin` header is present and does not match the
+  host;
+- it serves exactly one document and four endpoints. There is no route that
+  opens a file named by the request, so there is nothing to traverse;
+- bodies over 64 KB are refused, and a malformed body is a 400 rather than a
+  traceback.
+
+Confirming a case is an approval, so treat access to the console the same as
+access to `decisions.jsonl` — see the note on provenance below.
 
 ## Prompt injection
 
